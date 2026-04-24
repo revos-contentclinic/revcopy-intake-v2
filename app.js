@@ -674,6 +674,9 @@ function renderReview() {
               <span>Plain text (.txt)</span>
             </button>
           </div>
+          <p class="send-panel__pdf-tip">
+            <strong>PDF tip:</strong> in the print dialog, choose "Save as PDF" as destination, and make sure "Background graphics" / "More settings → Options → Background graphics" is <em>on</em> — otherwise the dark theme prints as plain white.
+          </p>
           <p class="send-panel__note">
             Your answers stay in your browser until you download — nothing is uploaded anywhere.
           </p>
