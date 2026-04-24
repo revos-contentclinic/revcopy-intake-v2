@@ -1208,8 +1208,13 @@ textarea { resize: vertical; }
 #printContainer { display: none; }
 
 @media print {
-  body.printing > .app,
-  body.printing .floaty-metaphor {
+  /* Hide the live screen UI when printing. .app sits inside #app
+     (body > #app > .app), so we use a descendant selector — direct-child
+     '>' previously failed silently and let 2 ghost pages print before
+     the cover. */
+  body.printing .app,
+  body.printing .floaty-metaphor,
+  body.printing .section-celebration {
     display: none !important;
   }
   body.printing #printContainer { display: block !important; }
