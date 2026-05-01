@@ -1,8 +1,8 @@
-# RevCOPY Intake — v2
+# RevUP Intake
 
-Refined client intake for marketing-campaign work. A calm, dark-themed diagnostic — 74 questions across 7 sections — designed to gather the depth a long-form sales letter and broader campaign work depend on.
+Client intake for RevUP marketing-campaign work. A calm, dark-themed diagnostic — 74 questions across 7 sections — designed to gather the depth a long-form sales letter and broader campaign work depend on.
 
-> **Predecessor:** `revcopy-intake` (v1) lives separately. This v2 is a refined parallel build informed by a UX critique pass.
+> **Note:** Internally this repo was originally named after the rev-copy Claude skill that processes the intake. Client-facing branding is **RevUP** — the name of the offer/service we sell.
 
 ---
 
@@ -12,7 +12,7 @@ This rebuild incorporates findings from a structured design critique. v1 stays p
 
 **Welcome page:**
 - One confident invitation instead of three paragraphs
-- Drop the redundant "RevCOPY · Client Intake" eyebrow (header brand already says it)
+- Drop the redundant "RevUP · Client Intake" eyebrow (header brand already says it)
 - Bigger, more poetic serif headline
 - Quiet handwritten promise — *"we read every word"* — beside the Begin button (when starting fresh)
 - Detail list using mono dot-bullets rather than paragraph density

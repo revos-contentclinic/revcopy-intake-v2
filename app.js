@@ -1,5 +1,5 @@
 /* ====================================================================
-   RevCOPY Intake v2 — Refined App Engine
+   RevUP Intake v2 — Refined App Engine
    Improvements over v1:
      - Welcome: single confident invitation (was 3 paragraphs)
      - Page-nav scoped to subsection + review only (not welcome/intros)
@@ -11,7 +11,7 @@
      - Calmer review accordion
    ==================================================================== */
 
-const STORAGE_KEY = 'revcopy_intake_v2';
+const STORAGE_KEY = 'revup_intake_v2';
 
 const state = {
   screen: 'welcome',
@@ -194,7 +194,7 @@ function renderHeader(showRight = true) {
     <div class="wf-header">
       <button class="brand-home" onclick="goHome()" aria-label="Return to start">
         <span class="brand-mark">R</span>
-        <span class="brand-text">RevCOPY</span>
+        <span class="brand-text">RevUP</span>
       </button>
       ${showRight ? `
         <div class="header-right">
@@ -1026,7 +1026,7 @@ document.addEventListener('keydown', (e) => {
 function buildPlainText() {
   const lines = [];
   const dateStr = formatDate(new Date());
-  lines.push('REVCOPY CLIENT INTAKE');
+  lines.push('REVUP CLIENT INTAKE');
   lines.push('=====================');
   lines.push('');
   if (state.meta.name) lines.push(`Name: ${state.meta.name}`);
@@ -1076,7 +1076,7 @@ function buildPlainText() {
 function buildMarkdown() {
   const lines = [];
   const dateStr = formatDate(new Date());
-  lines.push('# RevCOPY Client Intake');
+  lines.push('# RevUP Client Intake');
   lines.push('');
   if (state.meta.name) lines.push(`**Name:** ${state.meta.name}`);
   if (state.meta.email) lines.push(`**Email:** ${state.meta.email}`);
@@ -1129,13 +1129,13 @@ function buildMarkdown() {
 
 window.downloadAsText = function () {
   const txt = buildPlainText();
-  const filename = `RevCOPY-Intake_${(state.meta.name || 'client').replace(/[^a-z0-9]+/gi,'-')}_${formatDate(new Date()).replace(/[^0-9]+/g,'')}.txt`;
+  const filename = `RevUP-Intake_${(state.meta.name || 'client').replace(/[^a-z0-9]+/gi,'-')}_${formatDate(new Date()).replace(/[^0-9]+/g,'')}.txt`;
   downloadAsFile(txt, filename, 'text/plain');
 };
 
 window.downloadAsMarkdown = function () {
   const md = buildMarkdown();
-  const filename = `RevCOPY-Intake_${(state.meta.name || 'client').replace(/[^a-z0-9]+/gi,'-')}_${formatDate(new Date()).replace(/[^0-9]+/g,'')}.md`;
+  const filename = `RevUP-Intake_${(state.meta.name || 'client').replace(/[^a-z0-9]+/gi,'-')}_${formatDate(new Date()).replace(/[^0-9]+/g,'')}.md`;
   downloadAsFile(md, filename, 'text/markdown');
 };
 
@@ -1160,7 +1160,7 @@ function buildPrintHTML() {
       <div class="print-cover">
         <div class="print-cover__brand">
           <span class="print-cover__brand-mark">R</span>
-          <span class="print-cover__brand-text">RevCOPY</span>
+          <span class="print-cover__brand-text">RevUP</span>
         </div>
         <div class="print-cover__title">Client Intake</div>
         <p class="print-cover__sub">
@@ -1211,7 +1211,7 @@ function buildPrintHTML() {
 
   html += `
       <footer class="print-footer">
-        Generated ${dateStr} · RevCOPY Intake
+        Generated ${dateStr} · RevUP Intake
       </footer>
     </div>
   `;
