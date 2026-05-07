@@ -129,7 +129,7 @@ const QUESTIONS = [
     label:'Any conditions attached?',
     hint:"If yes, list them plainly. We never hide conditions in fine print.",
     why:"Hidden conditions in fine print produce post-purchase discovery — and that produces refund spikes, bad reviews, and chargebacks. Naming conditions up front lets the right buyers self-select in cleanly." },
-  { id:'q14', section:'A', subsection:'A3. The guarantee', type:'textarea',
+  { id:'q14', section:'A', subsection:'A3. The guarantee', type:'textarea', checkpoint:true,
     label:'Are you genuinely comfortable honoring this guarantee if someone asks?',
     hint:"If the honest answer is 'we hope they don't,' we'll need to rework the guarantee before writing.",
     why:"Hard checkpoint. Guarantees you don't fully stand behind generate refund waves once buyers feel the dissonance — the math hurts the business as much as it hurts the buyer. We'd rather catch this now than write copy on top of it." },
@@ -264,7 +264,7 @@ const QUESTIONS = [
     why:"Reference voices help us calibrate fast. Naming three writers you respect tells us more than ten paragraphs of voice description." },
 
   // B6. Warm-exit posture
-  { id:'q35', section:'B', subsection:'B6. Warm-exit posture (critical)', type:'textarea',
+  { id:'q35', section:'B', subsection:'B6. Warm-exit posture (critical)', type:'textarea', checkpoint:true,
     label:'Are you genuinely okay with the right readers filtering themselves out after reading?',
     hint:"This is not a trick question. If your honest answer is 'I want everyone who reads it to buy,' we will discuss before writing.",
     why:"Hard checkpoint. Marketing that tries to convert everyone produces post-purchase dissonance in the misfits — they refund, leave bad reviews, and tell their network. Filtering honestly costs short-term volume but compounds reputation. If that trade isn't acceptable, we work on the offer or audience first, not the copy." },

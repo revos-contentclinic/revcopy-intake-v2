@@ -91,14 +91,34 @@ function debouncedSave() {
   saveTimer = setTimeout(saveState, 600);
 }
 
+function relativeTime(isoStr) {
+  if (!isoStr) return '';
+  const t = new Date(isoStr).getTime();
+  if (isNaN(t)) return '';
+  const seconds = Math.max(1, Math.round((Date.now() - t) / 1000));
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
 let flashTimer = null;
 function showSavedFlash() {
   const el = document.getElementById('saveFlash');
   if (!el) return;
-  el.textContent = 'auto-saved';
+  el.textContent = 'filed away · just now';
   el.style.opacity = '1';
   clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => { el.style.opacity = '0.5'; }, 1600);
+  flashTimer = setTimeout(() => {
+    el.style.opacity = '0.5';
+    if (state.meta.lastSavedAt) {
+      el.textContent = `filed away · ${relativeTime(state.meta.lastSavedAt)}`;
+    }
+  }, 1600);
 }
 
 function triggerLeafShimmer() {
@@ -210,7 +230,7 @@ function renderHeader(showRight = true) {
       ${showRight ? `
         <div class="header-right">
           <span class="header-keyhint" title="Keyboard: Cmd+Enter next · Cmd+/ review">⌘ + ↵ next · ⌘ + / review</span>
-          <span id="saveFlash" class="save-status" role="status" aria-live="polite" aria-atomic="true" style="opacity: 0.5;">auto-saved</span>
+          <span id="saveFlash" class="save-status" role="status" aria-live="polite" aria-atomic="true" style="opacity: 0.5;">${state.meta.lastSavedAt ? `filed away · ${relativeTime(state.meta.lastSavedAt)}` : 'filed away'}</span>
           <button class="w-btn w-btn--icon" onclick="goReview()">Review</button>
         </div>
       ` : ''}
@@ -281,169 +301,31 @@ function renderWelcome() {
   `;
 }
 
-// === Section Intro — more breath, no page-nav noise ===
+// === Section Intro — editorial chapter opener ===
 function renderSectionIntro() {
   const section = SECTIONS[state.currentSectionIdx];
   const sectionNum = state.currentSectionIdx + 1;
   return `
     ${renderHeader()}
     ${renderProgress(`Section ${sectionNum} of ${SECTIONS.length}`)}
-    <div class="section-intro">
-      <div class="section-intro__copy">
-        <span class="eyebrow">Section ${sectionNum} · ${section.id}</span>
-        <h2>${section.title}.</h2>
-        <p class="section-intro__lede">${section.subtitle}</p>
-        <p>${section.why}</p>
+    <article class="section-intro">
+      <header class="section-intro__opener">
+        <span class="section-intro__drop-letter" aria-hidden="true">${section.id}</span>
+        <div class="section-intro__opener-meta">
+          <span class="eyebrow">Section ${sectionNum} of ${SECTIONS.length}</span>
+          <h2 class="section-intro__title">${section.title}</h2>
+        </div>
+      </header>
+      <hr class="section-intro__rule" aria-hidden="true"/>
+      <p class="section-intro__lede">${section.subtitle}</p>
+      <p class="section-intro__body">${section.why}</p>
+      <div class="section-intro__cta">
         <button class="w-btn w-btn--primary" onclick="startSection()">
-          Start · ${section.questionCount} questions · ${section.timeEst}  →
+          Begin · ${section.questionCount} questions · ${section.timeEst}  →
         </button>
       </div>
-      <div class="section-intro__diagram">
-        ${renderSectionDiagram(state.currentSectionIdx)}
-      </div>
-    </div>
+    </article>
   `;
-}
-
-// === Section diagrams — meaningful per section, not generic ===
-function renderSectionDiagram(activeIdx) {
-  // Per-section conceptual sketches — small, hand-drawn-feeling SVG metaphors
-  const section = SECTIONS[activeIdx];
-  const diagrams = {
-    A: renderDiagramOffer(),
-    B: renderDiagramFounder(),
-    C: renderDiagramAudience(),
-    D: renderDiagramShift(),
-    E: renderDiagramProof(),
-    F: renderDiagramMarket(),
-    G: renderDiagramConstraints(),
-  };
-  return diagrams[section.id] || '';
-}
-
-// Section A — offer: stacked rectangles + price tag
-function renderDiagramOffer() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <g stroke="#94c9a5" stroke-width="1.4" fill="none">
-      <rect x="60" y="40" width="160" height="50" rx="2" fill="rgba(148,201,165,0.08)"/>
-      <text x="140" y="70" font-family="JetBrains Mono" font-size="11" fill="#e6e2d6" text-anchor="middle" letter-spacing="0.1em">YOUR OFFER</text>
-      <rect x="80" y="100" width="120" height="28" rx="2" stroke-dasharray="3 3"/>
-      <text x="140" y="118" font-family="JetBrains Mono" font-size="9" fill="#7a7a70" text-anchor="middle">+ bonuses</text>
-      <rect x="80" y="138" width="120" height="28" rx="2" stroke-dasharray="3 3"/>
-      <text x="140" y="156" font-family="JetBrains Mono" font-size="9" fill="#7a7a70" text-anchor="middle">+ guarantee</text>
-    </g>
-    <g transform="translate(170 180)" stroke="#c9a961" stroke-width="1" fill="none">
-      <path d="M 0 0 L 50 0 L 60 12 L 50 24 L 0 24 Z" fill="rgba(201,169,97,0.1)"/>
-      <text x="25" y="17" font-family="JetBrains Mono" font-size="10" fill="#c9a961" text-anchor="middle">$</text>
-    </g>
-  </svg>`;
-}
-
-// Section B — founder: a single figure with halo of credentials
-function renderDiagramFounder() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <g stroke="#94c9a5" stroke-width="1.4" fill="none">
-      <circle cx="140" cy="100" r="32"/>
-      <path d="M 110 145 Q 140 130 170 145 L 168 175 L 112 175 Z" fill="rgba(148,201,165,0.1)"/>
-    </g>
-    <g stroke="#c9a961" stroke-width="0.8" fill="none" opacity="0.7">
-      <circle cx="140" cy="100" r="58" stroke-dasharray="2 4"/>
-      <circle cx="140" cy="100" r="74" stroke-dasharray="2 4"/>
-    </g>
-    <text x="140" y="220" font-family="Caveat" font-size="20" fill="#94c9a5" text-anchor="middle">who you really are</text>
-  </svg>`;
-}
-
-// Section C — audience: cluster of dots (people) with one highlighted
-function renderDiagramAudience() {
-  let dots = '';
-  for (let i = 0; i < 18; i++) {
-    const cx = 50 + (i % 6) * 36;
-    const cy = 50 + Math.floor(i / 6) * 50;
-    const isTarget = i === 7 || i === 13;
-    dots += `<g opacity="${isTarget ? 1 : 0.4}">
-      <circle cx="${cx}" cy="${cy}" r="6" fill="none" stroke="${isTarget ? '#94c9a5' : '#7a7a70'}" stroke-width="${isTarget ? 1.6 : 1}"/>
-      <path d="M ${cx-9} ${cy+22} Q ${cx} ${cy+10} ${cx+9} ${cy+22}" fill="none" stroke="${isTarget ? '#94c9a5' : '#7a7a70'}" stroke-width="${isTarget ? 1.6 : 1}"/>
-      ${isTarget ? `<circle cx="${cx}" cy="${cy+5}" r="22" fill="none" stroke="#c9a961" stroke-width="0.8" stroke-dasharray="2 3"/>` : ''}
-    </g>`;
-  }
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">${dots}</svg>`;
-}
-
-// Section D — shift: arrow from one belief-blob to another
-function renderDiagramShift() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <g stroke="#7a7a70" stroke-width="1" fill="none" stroke-dasharray="3 3">
-      <ellipse cx="60" cy="120" rx="42" ry="32" fill="rgba(122,122,112,0.08)"/>
-      <text x="60" y="125" font-family="Caveat" font-size="16" fill="#7a7a70" text-anchor="middle">old belief</text>
-    </g>
-    <g stroke="#94c9a5" stroke-width="1.4" fill="none">
-      <ellipse cx="220" cy="120" rx="42" ry="32" fill="rgba(148,201,165,0.12)"/>
-      <text x="220" y="125" font-family="Caveat" font-size="16" fill="#94c9a5" text-anchor="middle">new belief</text>
-    </g>
-    <g stroke="#c9a961" stroke-width="1.2" fill="none">
-      <path d="M 110 120 L 170 120" stroke-linecap="round"/>
-      <path d="M 165 114 L 172 120 L 165 126" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
-    <text x="140" y="105" font-family="Caveat" font-size="18" fill="#c9a961" text-anchor="middle">the shift</text>
-  </svg>`;
-}
-
-// Section E — proof: stacked receipts/cards
-function renderDiagramProof() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <g stroke="#94c9a5" stroke-width="1.3" fill="none">
-      <rect x="80" y="60" width="120" height="38" rx="2" fill="rgba(148,201,165,0.1)" transform="rotate(-3 140 79)"/>
-      <line x1="92" y1="74" x2="180" y2="74" stroke-width="0.8" transform="rotate(-3 140 74)"/>
-      <line x1="92" y1="84" x2="160" y2="84" stroke-width="0.8" transform="rotate(-3 140 84)"/>
-    </g>
-    <g stroke="#94c9a5" stroke-width="1.3" fill="none">
-      <rect x="80" y="105" width="120" height="38" rx="2" fill="rgba(148,201,165,0.1)" transform="rotate(2 140 124)"/>
-      <line x1="92" y1="119" x2="180" y2="119" stroke-width="0.8" transform="rotate(2 140 119)"/>
-      <line x1="92" y1="129" x2="170" y2="129" stroke-width="0.8" transform="rotate(2 140 129)"/>
-    </g>
-    <g stroke="#94c9a5" stroke-width="1.3" fill="none">
-      <rect x="80" y="150" width="120" height="38" rx="2" fill="rgba(148,201,165,0.12)"/>
-      <line x1="92" y1="164" x2="180" y2="164" stroke-width="0.8"/>
-      <line x1="92" y1="174" x2="155" y2="174" stroke-width="0.8"/>
-    </g>
-  </svg>`;
-}
-
-// Section F — market: surrounding circles
-function renderDiagramMarket() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <circle cx="140" cy="120" r="22" fill="rgba(148,201,165,0.15)" stroke="#94c9a5" stroke-width="1.4"/>
-    <text x="140" y="125" font-family="JetBrains Mono" font-size="9" fill="#e6e2d6" text-anchor="middle">YOU</text>
-    <g stroke="#7a7a70" stroke-width="1" fill="none" stroke-dasharray="3 3" opacity="0.7">
-      <circle cx="80" cy="80" r="18"/>
-      <circle cx="200" cy="80" r="18"/>
-      <circle cx="80" cy="170" r="18"/>
-      <circle cx="200" cy="170" r="18"/>
-    </g>
-    <g stroke="#7a7a70" stroke-width="0.6" fill="none" opacity="0.4">
-      <line x1="92" y1="92" x2="125" y2="115"/>
-      <line x1="188" y1="92" x2="155" y2="115"/>
-      <line x1="92" y1="158" x2="125" y2="135"/>
-      <line x1="188" y1="158" x2="155" y2="135"/>
-    </g>
-    <text x="140" y="220" font-family="Caveat" font-size="18" fill="#94c9a5" text-anchor="middle">in the world</text>
-  </svg>`;
-}
-
-// Section G — constraints: a frame
-function renderDiagramConstraints() {
-  return `<svg viewBox="0 0 280 240" width="100%" height="100%">
-    <g stroke="#c9a961" stroke-width="1" fill="none" stroke-dasharray="4 4">
-      <rect x="50" y="50" width="180" height="140" rx="2"/>
-    </g>
-    <g stroke="#94c9a5" stroke-width="1.2" fill="none">
-      <line x1="80" y1="100" x2="200" y2="100" stroke-width="0.8"/>
-      <line x1="80" y1="118" x2="180" y2="118" stroke-width="0.8"/>
-      <line x1="80" y1="136" x2="190" y2="136" stroke-width="0.8"/>
-    </g>
-    <text x="140" y="220" font-family="Caveat" font-size="18" fill="#c9a961" text-anchor="middle">your boundaries</text>
-  </svg>`;
 }
 
 // === Page Nav (only on subsection + review) ===
@@ -539,8 +421,16 @@ function renderSubsection() {
 function renderQuestionBlock(q, isFirst) {
   const value = state.answers[q.id];
   const safeWhy = q.why.replace(/"/g, '&quot;');
+  const checkpointClass = q.checkpoint ? ' q-block--checkpoint' : '';
+  const checkpointMark = q.checkpoint ? `
+    <div class="checkpoint-mark" aria-hidden="true">
+      <span class="checkpoint-mark__rule"></span>
+      <span class="checkpoint-mark__label">checkpoint</span>
+      <span class="checkpoint-mark__rule"></span>
+    </div>` : '';
   return `
-    <div class="q-block ${isFirst ? 'is-active' : ''}" id="${q.id}" data-qid="${q.id}" data-why="${safeWhy}" onclick="setActiveQuestion('${q.id}')" onfocusin="setActiveQuestion('${q.id}')">
+    <div class="q-block${isFirst ? ' is-active' : ''}${checkpointClass}" id="${q.id}" data-qid="${q.id}" data-why="${safeWhy}" onclick="setActiveQuestion('${q.id}')" onfocusin="setActiveQuestion('${q.id}')">
+      ${checkpointMark}
       <label class="q-label">
         <span class="q-label__num">${q.id}</span>
         <span class="q-label__text">${q.label}</span>
@@ -872,16 +762,18 @@ function renderReviewQuestion(q) {
   `;
 }
 
-// === Complete ===
+// === Complete — closing artifact, hand-signed feel ===
 function renderComplete() {
   return `
     ${renderHeader()}
     <div class="complete">
-      <h2 class="complete__title">Thank you.</h2>
+      <span class="eyebrow complete__eyebrow">filed</span>
+      <h2 class="complete__title">That's it.</h2>
       <p class="complete__sub">
-        Your intake is downloaded. Send it our way and we'll start the work.
+        Your intake is on its way to your downloads folder. When it lands in our inbox, we'll read every word — then we'll be in touch.
       </p>
-      <button class="w-btn" onclick="state.screen='review'; render();">← Back to review</button>
+      <p class="complete__signature">— RevUP</p>
+      <button class="w-btn w-btn--icon" onclick="state.screen='review'; render();">← back to review</button>
     </div>
   `;
 }
