@@ -20,6 +20,7 @@ const state = {
   answers: {},
   expandedReviewSections: {},
   expandedReviewQuestions: {},
+  collapsedOffers: {}, // keyed by `${qid}_${offerIdx}` — true means collapsed
   meta: { name: '', email: '', startedAt: null, lastSavedAt: null },
   // Track section completion to fire celebration once per section
   celebratedSections: {},
@@ -54,6 +55,7 @@ function saveState() {
       currentSubsectionIdx: state.currentSubsectionIdx,
       expandedReviewSections: state.expandedReviewSections,
       celebratedSections: state.celebratedSections,
+      collapsedOffers: state.collapsedOffers,
     }));
     showSavedFlash();
     triggerLeafShimmer();
@@ -72,6 +74,7 @@ function loadState() {
     Object.assign(state.meta, data.meta || {});
     Object.assign(state.expandedReviewSections, data.expandedReviewSections || {});
     Object.assign(state.celebratedSections, data.celebratedSections || {});
+    Object.assign(state.collapsedOffers, data.collapsedOffers || {});
     if (typeof data.currentSectionIdx === 'number') state.currentSectionIdx = data.currentSectionIdx;
     if (typeof data.currentSubsectionIdx === 'number') state.currentSubsectionIdx = data.currentSubsectionIdx;
     // Always start at welcome — no screen restoration
@@ -207,7 +210,7 @@ function renderHeader(showRight = true) {
       ${showRight ? `
         <div class="header-right">
           <span class="header-keyhint" title="Keyboard: Cmd+Enter next · Cmd+/ review">⌘ + ↵ next · ⌘ + / review</span>
-          <span id="saveFlash" class="save-status" style="opacity: 0.5;">auto-saved</span>
+          <span id="saveFlash" class="save-status" role="status" aria-live="polite" aria-atomic="true" style="opacity: 0.5;">auto-saved</span>
           <button class="w-btn w-btn--icon" onclick="goReview()">Review</button>
         </div>
       ` : ''}
@@ -247,11 +250,11 @@ function renderWelcome() {
       <p class="welcome__sub">
         The strategy isn't broken. The methodology isn't broken. You're not broken. But something underneath isn't quite right — and we won't pretend to know what it is yet. This intake is where it starts.
       </p>
-      <p class="welcome__sub">
-        A note on how we work before you begin: we build for long-term trust over short-term spikes. Manufactured urgency, fake scarcity, and high-cortisol copy convert in the moment but produce refunds, churn, and brand erosion within months. Calm, advocacy-led marketing converts more slowly and compounds for years. That's the bet we make.
+      <p class="welcome__sub welcome__sub--regular">
+        <strong>A note on how we work before you begin:</strong> we build for long-term trust over short-term spikes. Manufactured urgency, fake scarcity, and high-cortisol copy convert in the moment but produce refunds, churn, and brand erosion within months. Calm, advocacy-led marketing converts more slowly and compounds for years. That's the bet we make.
       </p>
       <p class="welcome__sub">
-        You don't have to adopt our worldview to fill this in. We'll explain why we ask each thing as we go — take what's useful, leave what isn't.
+        You don't have to adopt our worldview to fill this in. We'll explain why we ask as we go — take what's useful, leave what isn't.
       </p>
       <div class="welcome__details">
         <div class="welcome__detail-row">${total} questions across 7 sections</div>
@@ -632,23 +635,49 @@ function renderInput(q, value) {
       const minimum = q.minimum || 1;
       return `
         <div class="offer-group" data-qid="${q.id}">
-          ${offers.map((offer, idx) => `
-            <div class="offer-block" data-offer-idx="${idx}">
-              <div class="offer-block__head">
-                <span class="offer-block__num">Offer ${idx + 1}</span>
-                ${offers.length > minimum ? `
-                  <button class="offer-block__remove" onclick="removeOffer('${q.id}', ${idx})" title="Remove this offer">Remove</button>
-                ` : ''}
-              </div>
+          ${offers.map((offer, idx) => {
+            const collapsed = !!state.collapsedOffers[`${q.id}_${idx}`];
+            const summary = buildOfferSummary(offer, q.perOfferFields);
+            const summaryClass = summary ? '' : 'offer-block__summary--empty';
+            const summaryText = summary || 'untitled — tap to fill';
+            return `
+            <div class="offer-block ${collapsed ? 'is-collapsed' : ''}" data-offer-idx="${idx}">
+              <button class="offer-block__head" onclick="toggleOffer('${q.id}', ${idx})" type="button" aria-expanded="${!collapsed}">
+                <span class="offer-block__num-wrap">
+                  <span class="offer-block__num">Offer ${idx + 1}</span>
+                  <span class="offer-block__summary ${summaryClass}">${escapeHtml(summaryText)}</span>
+                </span>
+                <span class="offer-block__chevron" aria-hidden="true">▾</span>
+              </button>
               ${q.perOfferFields.map(f => renderOfferField(q.id, idx, f, offer[f.id])).join('')}
+              ${offers.length > minimum ? `
+                <div class="offer-block__remove-wrap">
+                  <button class="offer-block__remove" onclick="removeOffer('${q.id}', ${idx})" title="Remove this offer">Remove offer</button>
+                </div>
+              ` : ''}
             </div>
-          `).join('')}
+          `;}).join('')}
           <button class="offer-add" onclick="addOffer('${q.id}')">+ Add another offer</button>
         </div>
       `;
     }
   }
   return '';
+}
+
+function buildOfferSummary(offer, fields) {
+  if (!offer || typeof offer !== 'object') return '';
+  const parts = [];
+  if (offer.name && String(offer.name).trim()) parts.push(String(offer.name).trim());
+  if (offer.position) {
+    const positionField = fields.find(f => f.id === 'position');
+    if (positionField && positionField.options) {
+      const opt = positionField.options.find(o => o.value === offer.position);
+      if (opt) parts.push(opt.title);
+    }
+  }
+  if (offer.price && String(offer.price).trim()) parts.push(String(offer.price).trim());
+  return parts.join(' · ');
 }
 
 function renderOfferField(qid, offerIdx, field, value) {
@@ -939,7 +968,15 @@ window.onOfferFieldChange = function (qid, offerIdx, fieldId, value) {
 
 window.addOffer = function (qid) {
   if (!Array.isArray(state.answers[qid])) state.answers[qid] = [{}];
+  // Collapse existing offers that have content — keeps focus on the new one
+  state.answers[qid].forEach((offer, idx) => {
+    const hasContent = offer && Object.values(offer).some(v => v && String(v).trim());
+    if (hasContent) state.collapsedOffers[`${qid}_${idx}`] = true;
+  });
   state.answers[qid].push({});
+  // New offer is at the last index — explicitly expanded
+  const newIdx = state.answers[qid].length - 1;
+  state.collapsedOffers[`${qid}_${newIdx}`] = false;
   saveState();
   render();
   setTimeout(() => {
@@ -958,6 +995,17 @@ window.removeOffer = function (qid, offerIdx) {
   if (!confirm('Remove this offer? Its fields will be cleared.')) return;
   state.answers[qid].splice(offerIdx, 1);
   if (state.answers[qid].length === 0) state.answers[qid] = [{}];
+  // Reset collapse state for this qid — indexes have shifted; safer to expand all remaining
+  Object.keys(state.collapsedOffers).forEach(key => {
+    if (key.startsWith(`${qid}_`)) delete state.collapsedOffers[key];
+  });
+  saveState();
+  render();
+};
+
+window.toggleOffer = function (qid, offerIdx) {
+  const key = `${qid}_${offerIdx}`;
+  state.collapsedOffers[key] = !state.collapsedOffers[key];
   saveState();
   render();
 };
@@ -1105,6 +1153,7 @@ window.resetIntake = function () {
   state.expandedReviewSections = {};
   state.expandedReviewQuestions = {};
   state.celebratedSections = {};
+  state.collapsedOffers = {};
   state.screen = 'welcome';
   localStorage.removeItem(STORAGE_KEY);
   render();
