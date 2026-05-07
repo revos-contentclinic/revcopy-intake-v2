@@ -788,6 +788,151 @@ textarea { resize: vertical; }
   color: var(--ink-faint);
 }
 
+/* === Repeating offer block === */
+.offer-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.offer-block {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 24px 22px 22px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  transition: border-color var(--t-base) var(--ease);
+}
+.offer-block:hover {
+  border-color: var(--accent-soft);
+}
+.offer-block__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 12px;
+}
+.offer-block__num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.offer-block__remove {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.offer-block__remove:hover {
+  color: var(--warn);
+  background: rgba(0,0,0,0.2);
+}
+.offer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.offer-field__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.offer-field__hint {
+  font-family: var(--font-sketch);
+  color: var(--ink-faint);
+  font-size: 13px;
+  margin: 0 0 4px 0;
+}
+.choice-group--compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice-group--compact .choice {
+  flex: 1 1 calc(33.333% - 6px);
+  min-width: 140px;
+  padding: 10px 12px;
+}
+.choice-group--compact .choice__title {
+  font-size: 13px;
+}
+.choice-group--compact .choice__desc {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.offer-add {
+  background: none;
+  border: 1px dashed var(--line-strong);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--t-base) var(--ease), background var(--t-base) var(--ease), color var(--t-base) var(--ease);
+}
+.offer-add:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent-strong);
+}
+
+/* === Offer rendering in review + print === */
+.review-offer,
+.print-offer {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left: 2px solid var(--accent-soft);
+  background: rgba(0,0,0,0.12);
+  border-radius: var(--radius-sm);
+}
+.review-offer__title,
+.print-offer__title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 8px 0;
+}
+.review-offer dl,
+.print-offer dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+.review-offer dt,
+.print-offer dt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.review-offer dd,
+.print-offer dd {
+  margin: 0;
+  font-family: var(--font-serif);
+  color: var(--ink);
+}
+
 /* ============================================================
    REVIEW V2 — calmer accordion
    ============================================================ */

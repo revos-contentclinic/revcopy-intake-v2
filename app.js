@@ -139,7 +139,15 @@ function answeredCount() { return QUESTIONS.filter(q => isAnswered(q.id)).length
 function isAnswered(qid) {
   const v = state.answers[qid];
   if (v == null) return false;
-  if (Array.isArray(v)) return v.length > 0;
+  if (Array.isArray(v)) {
+    if (v.length === 0) return false;
+    // Offer array (array of objects) — answered if any offer has any non-empty field
+    if (typeof v[0] === 'object' && v[0] !== null) {
+      return v.some(item => Object.values(item).some(x => x && String(x).trim()));
+    }
+    // Checkbox array (array of strings)
+    return true;
+  }
   if (typeof v === 'object') return Object.values(v).some(x => x && String(x).trim());
   return String(v).trim().length > 0;
 }
@@ -223,23 +231,30 @@ function renderProgress(label) {
   `;
 }
 
-// === Welcome — single confident invitation ===
+// === Welcome — manifesto-style, educate-don't-force ===
 function renderWelcome() {
   const hasProgress = answeredCount() > 0;
   const name = state.meta.name || '';
   const email = state.meta.email || '';
+  const total = totalQuestions();
   return `
     ${renderHeader(false)}
     <div class="welcome">
       <h1 class="welcome__title">
-        Before we start your marketing campaign,<br/>
-        <em>we want to understand your world.</em>
+        Something is probably feeling off in the work.<br/>
+        <em>That's why this exists.</em>
       </h1>
       <p class="welcome__sub">
-        Not a form. A diagnostic. The depth you bring here shapes everything we make for you afterwards — the sales letter, the campaign, the positioning, the voice.
+        The strategy isn't broken. The methodology isn't broken. You're not broken. But something underneath isn't quite right — and we won't pretend to know what it is yet. This intake is where it starts.
+      </p>
+      <p class="welcome__sub">
+        A note on how we work before you begin: we build for long-term trust over short-term spikes. Manufactured urgency, fake scarcity, and high-cortisol copy convert in the moment but produce refunds, churn, and brand erosion within months. Calm, advocacy-led marketing converts more slowly and compounds for years. That's the bet we make.
+      </p>
+      <p class="welcome__sub">
+        You don't have to adopt our worldview to fill this in. We'll explain why we ask each thing as we go — take what's useful, leave what isn't.
       </p>
       <div class="welcome__details">
-        <div class="welcome__detail-row">74 questions across 7 sections</div>
+        <div class="welcome__detail-row">${total} questions across 7 sections</div>
         <div class="welcome__detail-row">About 90 minutes — fillable in pieces</div>
         <div class="welcome__detail-row">Auto-saves to your browser as you type</div>
         <div class="welcome__detail-row">Be honest, not polished</div>
@@ -604,7 +619,7 @@ function renderInput(q, value) {
       `).join('')}</div>`;
     }
     case 'subfields': {
-      const obj = value && typeof value === 'object' ? value : {};
+      const obj = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
       return `<div class="subfield-group">${q.subfields.map(sf => `
         <div class="subfield">
           <span class="subfield__label">${sf.label}</span>
@@ -612,6 +627,53 @@ function renderInput(q, value) {
         </div>
       `).join('')}</div>`;
     }
+    case 'repeating-offer': {
+      const offers = Array.isArray(value) && value.length > 0 ? value : [{}];
+      const minimum = q.minimum || 1;
+      return `
+        <div class="offer-group" data-qid="${q.id}">
+          ${offers.map((offer, idx) => `
+            <div class="offer-block" data-offer-idx="${idx}">
+              <div class="offer-block__head">
+                <span class="offer-block__num">Offer ${idx + 1}</span>
+                ${offers.length > minimum ? `
+                  <button class="offer-block__remove" onclick="removeOffer('${q.id}', ${idx})" title="Remove this offer">Remove</button>
+                ` : ''}
+              </div>
+              ${q.perOfferFields.map(f => renderOfferField(q.id, idx, f, offer[f.id])).join('')}
+            </div>
+          `).join('')}
+          <button class="offer-add" onclick="addOffer('${q.id}')">+ Add another offer</button>
+        </div>
+      `;
+    }
+  }
+  return '';
+}
+
+function renderOfferField(qid, offerIdx, field, value) {
+  const safeVal = (v) => escapeHtml(v == null ? '' : String(v));
+  const fieldId = `${qid}_${offerIdx}_${field.id}`;
+  const onchange = `onOfferFieldChange('${qid}', ${offerIdx}, '${field.id}', this.value)`;
+  const labelHtml = `<span class="offer-field__label">${field.label}</span>`;
+  const hintHtml = field.hint ? `<p class="offer-field__hint">${field.hint}</p>` : '';
+  const placeholder = escapeHtml(field.placeholder || '');
+
+  switch (field.type) {
+    case 'text':
+      return `<div class="offer-field">${labelHtml}${hintHtml}<input class="w-field" type="text" id="${fieldId}" value="${safeVal(value)}" placeholder="${placeholder}" oninput="${onchange}" /></div>`;
+    case 'textarea':
+      return `<div class="offer-field">${labelHtml}${hintHtml}<textarea class="w-field w-field--multi" id="${fieldId}" oninput="${onchange}" placeholder="${placeholder}">${safeVal(value)}</textarea></div>`;
+    case 'radio':
+      return `<div class="offer-field">${labelHtml}${hintHtml}<div class="choice-group choice-group--compact">${field.options.map(opt => `
+        <label class="choice ${value === opt.value ? 'selected' : ''}">
+          <input type="radio" name="${fieldId}" value="${escapeHtml(opt.value)}" ${value === opt.value ? 'checked' : ''} onchange="onOfferFieldChange('${qid}', ${offerIdx}, '${field.id}', '${escapeHtml(opt.value)}'); refreshOfferChoiceCards('${fieldId}');" />
+          <div>
+            <div class="choice__title">${opt.title}</div>
+            ${opt.desc ? `<div class="choice__desc">${opt.desc}</div>` : ''}
+          </div>
+        </label>
+      `).join('')}</div></div>`;
   }
   return '';
 }
@@ -726,11 +788,29 @@ function renderReviewQuestion(q) {
   if (!answered) {
     fullAnswer = '<p class="review-q__skipped">— skipped —</p>';
   } else if (Array.isArray(v)) {
-    const items = v.map(item => {
-      const opt = q.options ? q.options.find(o => o.value === item) : null;
-      return opt ? opt.title : item;
-    });
-    fullAnswer = '<ul>' + items.map(i => `<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+    if (q.type === 'repeating-offer') {
+      fullAnswer = v.map((offer, idx) => {
+        const filled = q.perOfferFields.filter(f => offer[f.id] && String(offer[f.id]).trim());
+        if (filled.length === 0) return '';
+        return `<div class="review-offer">
+          <div class="review-offer__title">Offer ${idx + 1}</div>
+          <dl>${filled.map(f => {
+            let display = offer[f.id];
+            if (f.type === 'radio' && f.options) {
+              const opt = f.options.find(o => o.value === display);
+              if (opt) display = opt.title;
+            }
+            return `<dt>${escapeHtml(f.label)}</dt><dd>${escapeHtml(String(display))}</dd>`;
+          }).join('')}</dl>
+        </div>`;
+      }).join('');
+    } else {
+      const items = v.map(item => {
+        const opt = q.options ? q.options.find(o => o.value === item) : null;
+        return opt ? opt.title : item;
+      });
+      fullAnswer = '<ul>' + items.map(i => `<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+    }
   } else if (typeof v === 'object') {
     const entries = Object.entries(v).filter(([_, val]) => val && String(val).trim());
     fullAnswer = '<dl>' + entries.map(([k, val]) => {
@@ -848,6 +928,44 @@ window.onSubfieldChange = function (qid, sfid, value) {
   }
   state.answers[qid][sfid] = value;
   debouncedSave();
+};
+
+window.onOfferFieldChange = function (qid, offerIdx, fieldId, value) {
+  if (!Array.isArray(state.answers[qid])) state.answers[qid] = [{}];
+  while (state.answers[qid].length <= offerIdx) state.answers[qid].push({});
+  state.answers[qid][offerIdx] = { ...state.answers[qid][offerIdx], [fieldId]: value };
+  debouncedSave();
+};
+
+window.addOffer = function (qid) {
+  if (!Array.isArray(state.answers[qid])) state.answers[qid] = [{}];
+  state.answers[qid].push({});
+  saveState();
+  render();
+  setTimeout(() => {
+    const blocks = document.querySelectorAll(`.offer-group[data-qid="${qid}"] .offer-block`);
+    const last = blocks[blocks.length - 1];
+    if (last) {
+      last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstInput = last.querySelector('.w-field');
+      if (firstInput) firstInput.focus();
+    }
+  }, 100);
+};
+
+window.removeOffer = function (qid, offerIdx) {
+  if (!Array.isArray(state.answers[qid])) return;
+  if (!confirm('Remove this offer? Its fields will be cleared.')) return;
+  state.answers[qid].splice(offerIdx, 1);
+  if (state.answers[qid].length === 0) state.answers[qid] = [{}];
+  saveState();
+  render();
+};
+
+window.refreshOfferChoiceCards = function (fieldId) {
+  document.querySelectorAll(`input[name="${fieldId}"]`).forEach(input => {
+    input.closest('.choice').classList.toggle('selected', input.checked);
+  });
 };
 
 window.beginIntake = function () {
@@ -1050,10 +1168,28 @@ function buildPlainText() {
         if (!isAnswered(q.id)) {
           lines.push('   [skipped]');
         } else if (Array.isArray(v)) {
-          v.forEach(item => {
-            const opt = q.options ? q.options.find(o => o.value === item) : null;
-            lines.push(`   - ${opt ? opt.title : item}`);
-          });
+          if (q.type === 'repeating-offer') {
+            v.forEach((offer, idx) => {
+              lines.push(`   Offer ${idx + 1}`);
+              q.perOfferFields.forEach(f => {
+                const fv = offer[f.id];
+                if (fv && String(fv).trim()) {
+                  let display = fv;
+                  if (f.type === 'radio' && f.options) {
+                    const opt = f.options.find(o => o.value === fv);
+                    if (opt) display = opt.title;
+                  }
+                  lines.push(`     ${f.label}: ${display}`);
+                }
+              });
+              lines.push('');
+            });
+          } else {
+            v.forEach(item => {
+              const opt = q.options ? q.options.find(o => o.value === item) : null;
+              lines.push(`   - ${opt ? opt.title : item}`);
+            });
+          }
         } else if (typeof v === 'object') {
           Object.entries(v).forEach(([k, val]) => {
             const sf = q.subfields ? q.subfields.find(s => s.id === k) : null;
@@ -1103,10 +1239,28 @@ function buildMarkdown() {
         if (!isAnswered(q.id)) {
           lines.push('_[skipped]_');
         } else if (Array.isArray(v)) {
-          v.forEach(item => {
-            const opt = q.options ? q.options.find(o => o.value === item) : null;
-            lines.push(`- ${opt ? opt.title : item}`);
-          });
+          if (q.type === 'repeating-offer') {
+            v.forEach((offer, idx) => {
+              lines.push('');
+              lines.push(`**Offer ${idx + 1}**`);
+              q.perOfferFields.forEach(f => {
+                const fv = offer[f.id];
+                if (fv && String(fv).trim()) {
+                  let display = fv;
+                  if (f.type === 'radio' && f.options) {
+                    const opt = f.options.find(o => o.value === fv);
+                    if (opt) display = opt.title;
+                  }
+                  lines.push(`- **${f.label}:** ${display}`);
+                }
+              });
+            });
+          } else {
+            v.forEach(item => {
+              const opt = q.options ? q.options.find(o => o.value === item) : null;
+              lines.push(`- ${opt ? opt.title : item}`);
+            });
+          }
         } else if (typeof v === 'object') {
           Object.entries(v).forEach(([k, val]) => {
             const sf = q.subfields ? q.subfields.find(s => s.id === k) : null;
@@ -1222,6 +1376,23 @@ function buildPrintHTML() {
 function renderPrintAnswer(q, v, answered) {
   if (!answered) return '<em>[skipped]</em>';
   if (Array.isArray(v)) {
+    if (q.type === 'repeating-offer') {
+      return v.map((offer, idx) => {
+        const filled = q.perOfferFields.filter(f => offer[f.id] && String(offer[f.id]).trim());
+        if (filled.length === 0) return '';
+        return `<div class="print-offer">
+          <h4 class="print-offer__title">Offer ${idx + 1}</h4>
+          <dl>${filled.map(f => {
+            let display = offer[f.id];
+            if (f.type === 'radio' && f.options) {
+              const opt = f.options.find(o => o.value === display);
+              if (opt) display = opt.title;
+            }
+            return `<dt>${escapeHtml(f.label)}</dt><dd>${escapeHtml(String(display))}</dd>`;
+          }).join('')}</dl>
+        </div>`;
+      }).join('');
+    }
     return '<ul>' + v.map(item => {
       const opt = q.options ? q.options.find(o => o.value === item) : null;
       return `<li>${escapeHtml(opt ? opt.title : item)}</li>`;
